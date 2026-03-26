@@ -3099,7 +3099,7 @@ function init() {
 
       // Fetch all room files
       var promises = files.map(function (f) {
-        return fetch('contributors/' + f + '?t=' + Date.now())
+        return fetch('contributors/' + encodeURIComponent(f) + '?t=' + Date.now())
           .then(function (r) { return r.ok ? r.text() : ''; })
           .then(function (md) { return parseRoom(md, f); })
           .catch(function () { return null; });
