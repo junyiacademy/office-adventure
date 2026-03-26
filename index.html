@@ -1,0 +1,3283 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>均一辦公室探險</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+.hidden { display: none !important; }
+
+:root {
+  --bg: #f5f0e8;
+  --bg-card: #ffffff;
+  --border: #e0d5c5;
+  --accent: #e07850;
+  --accent-dim: #c4674a;
+  --accent-bright: #f09070;
+  --text: #3a3028;
+  --text-dim: #7a6e60;
+  --text-muted: #b0a898;
+  --font-serif: 'Noto Serif TC', Georgia, serif;
+  --font-sans: 'Noto Sans TC', 'Helvetica Neue', sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   APP LAYOUT
+   ============================================================ */
+#app {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+
+/* --- Top Bar (fixed) --- */
+#top-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Progress label */
+#progress-label {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Mini-map canvas */
+#minimap-btn {
+  width: 72px; height: 72px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+#minimap-btn canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+
+/* --- Middle scrollable area --- */
+#room-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 16px 24px;
+}
+
+/* --- Bottom Bar (fixed) --- */
+#bottom-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-top: 1px solid var(--border);
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  gap: 8px;
+}
+
+.bottom-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-btn:active {
+  background: var(--border);
+  border-color: var(--accent-dim);
+}
+
+#room-counter {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   GAME SCREEN (hidden by default)
+   ============================================================ */
+#game-screen { display: none; width: 100%; height: 100%; flex-direction: column; }
+#game-screen.active { display: flex; }
+
+/* ============================================================
+   WELCOME SCREEN
+   ============================================================ */
+#welcome-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%; height: 100%;
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#welcome-screen.hidden { display: none; }
+
+#dust-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+.welcome-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+  position: relative; z-index: 1;
+}
+
+.welcome-subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+  margin-bottom: 24px;
+  position: relative; z-index: 1;
+}
+
+.welcome-intro {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--text);
+  line-height: 1.8;
+  max-width: 360px;
+  margin-bottom: 24px;
+  position: relative; z-index: 1;
+}
+
+.welcome-quest {
+  position: relative; z-index: 1;
+  background: rgba(224,120,80,0.06);
+  border: 1px solid rgba(224,120,80,0.2);
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-bottom: 28px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.welcome-quest-title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.welcome-quest-chars {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.welcome-char-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(224,120,80,0.08);
+  border: 2px solid rgba(224,120,80,0.3);
+}
+
+.welcome-quest-desc {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.welcome-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+  border: none;
+  border-radius: 12px;
+  padding: 14px 40px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: 12px;
+  min-height: 48px;
+  position: relative; z-index: 1;
+}
+
+.welcome-btn:active { transform: scale(0.97); }
+
+.welcome-btn.secondary {
+  background: var(--bg-card);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  font-size: var(--fs-md);
+  padding: 10px 28px;
+}
+
+/* ============================================================
+   ROOM CONTENT
+   ============================================================ */
+.room-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent-dim);
+}
+
+.room-author {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.room-description {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  line-height: 1.9;
+  color: var(--text);
+  margin-bottom: 28px;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Section Heading --- */
+.hint-banner {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  background: rgba(224,120,80,0.08);
+  border: 1px solid rgba(224,120,80,0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.section-heading {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+/* --- Interaction Cards --- */
+.interaction-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.3s, background 0.2s, opacity 0.3s, box-shadow 0.2s;
+  min-height: 44px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.interaction-card:active:not(.locked):not(.chosen) { background: #f9f5ef; }
+.interaction-card.chosen { border-color: var(--accent-dim); background: #fdf6f2; }
+.interaction-card.chosen.previous { border-color: var(--accent-dim); background: #fdf6f2; opacity: 0.75; }
+.interaction-card.locked { opacity: 0.35; pointer-events: none; border-style: dashed; }
+.interaction-card.locked {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: default;
+}
+
+.interaction-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.interaction-text {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+}
+
+.interaction-badge {
+  font-size: var(--fs-xs);
+  color: var(--accent-dim);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.interaction-result {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  line-height: 1.8;
+  color: var(--text);
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: none;
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.interaction-card.chosen .interaction-result { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* --- Exits (compass grid) --- */
+.exits-compass {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 8px;
+  max-width: 320px;
+  margin: 0 auto;
+  margin-top: 12px;
+}
+
+.exit-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 8px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  text-align: center;
+}
+
+.exit-btn:active {
+  transform: scale(0.96);
+  background: var(--border);
+  border-color: var(--accent-dim);
+}
+
+.exit-north { grid-column: 2; grid-row: 1; }
+.exit-west  { grid-column: 1; grid-row: 2; }
+.exit-east  { grid-column: 3; grid-row: 2; }
+.exit-south { grid-column: 2; grid-row: 3; }
+
+/* ============================================================
+   ROOM TRANSITION OVERLAY
+   ============================================================ */
+#transition-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#transition-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#transition-text {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lg);
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ============================================================
+   JOURNAL OVERLAY
+   ============================================================ */
+#journal-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 250;
+  display: none; flex-direction: column;
+}
+
+#journal-overlay.active { display: flex; }
+
+#journal-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.journal-tab {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-dim);
+  background: none; border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  min-height: 44px;
+}
+
+.journal-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+#journal-close {
+  margin-left: auto;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md); font-weight: 600;
+  color: var(--text-dim);
+  background: none; border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+#journal-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 16px;
+}
+
+/* Story tab */
+.story-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.story-paragraph {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  line-height: 2;
+  color: var(--text);
+  margin-bottom: 16px;
+  text-indent: 2em;
+}
+
+.story-transition {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  text-align: center;
+  margin: 8px 0;
+  font-style: italic;
+}
+
+.story-copy-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  margin-top: 20px;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  transition: background 0.2s;
+}
+
+.story-copy-btn:active { background: var(--border); }
+
+.story-empty {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* Adventure log tab */
+.log-summary {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  line-height: 1.8;
+}
+
+.log-summary strong { color: var(--accent); font-weight: 600; }
+
+.log-timeline { position: relative; padding-left: 20px; }
+.log-timeline::before {
+  content: '';
+  position: absolute;
+  left: 5px; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.log-entry {
+  position: relative;
+  margin-bottom: 16px;
+  padding-left: 16px;
+}
+
+.log-entry::before {
+  content: '';
+  position: absolute;
+  left: -19px; top: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.log-entry.entry-enter::before { background: var(--accent-dim); }
+.log-entry.entry-choice::before { background: var(--accent-bright); }
+
+.log-entry-time {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.log-entry-room {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.log-entry-action {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.log-entry-result {
+  font-family: var(--font-serif);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.6;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   FULL MAP OVERLAY
+   ============================================================ */
+#map-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 250;
+  display: none; flex-direction: column;
+}
+
+#map-overlay.active { display: flex; }
+
+#map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+#map-title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg); font-weight: 600;
+  color: var(--accent);
+}
+
+#map-close {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md); font-weight: 600;
+  color: var(--text-dim);
+  background: none; border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+#map-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#map-canvas { position: absolute; top: 0; left: 0; }
+
+.map-tooltip {
+  position: absolute;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  transition: opacity 0.15s ease;
+}
+
+.map-tooltip.hidden { display: none; }
+
+/* ============================================================
+   LOADING
+   ============================================================ */
+#loading-screen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  position: absolute; inset: 0;
+  background: var(--bg);
+  z-index: 500;
+}
+
+#loading-screen.hidden { display: none; }
+
+.loading-text {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+  animation: loadPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadPulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* ============================================================
+   CHAR COLLECTION BOXES (top bar)
+   ============================================================ */
+#char-collection {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 12px;
+}
+
+.char-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.char-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  margin: 0 3px;
+}
+
+.char-box.found {
+  background: #e07850;
+  color: #fff;
+  border: 2px solid #e07850;
+}
+
+.char-box.empty {
+  background: transparent;
+  color: var(--text-muted);
+  border: 2px dashed var(--border);
+}
+
+/* ============================================================
+   CHAR DISCOVERY OVERLAY
+   ============================================================ */
+#char-discovery-overlay {
+  position: fixed; inset: 0;
+  background: rgba(245, 240, 232, 0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  cursor: pointer;
+}
+
+#char-discovery-overlay.active { display: flex; }
+
+#char-discovery-char {
+  font-family: var(--font-serif);
+  font-size: 120px;
+  font-weight: 700;
+  color: var(--accent);
+  animation: charPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+#char-discovery-msg {
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  color: var(--text);
+  margin-top: 16px;
+  opacity: 0;
+  animation: fadeIn 0.3s ease 0.3s forwards;
+}
+
+@keyframes charPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   COMPLETION OVERLAY
+   ============================================================ */
+#completion-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  z-index: 300;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 32px 16px;
+}
+
+#completion-overlay.active { display: flex; }
+
+.completion-title {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.completion-subtitle {
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  color: var(--text);
+  margin-bottom: 24px;
+}
+
+.completion-input-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.completion-input-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+}
+
+.completion-input {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  padding: 10px 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  width: 100%;
+  max-width: 280px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.completion-input:focus { border-color: var(--accent); }
+
+.completion-generate-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+  border: none;
+  border-radius: 10px;
+  padding: 12px 32px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: transform 0.2s;
+}
+
+.completion-generate-btn:active { transform: scale(0.97); }
+
+#plaque-container {
+  margin: 16px 0;
+  display: none;
+}
+
+#plaque-container.visible { display: block; }
+
+#plaque-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.completion-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.2s;
+  flex: 1;
+  min-width: 120px;
+  text-align: center;
+}
+
+.completion-btn:active { background: var(--border); }
+
+.completion-btn.danger {
+  color: #d9534f;
+  border-color: #d9534f;
+}
+
+/* ============================================================
+   VERIFY PAGE
+   ============================================================ */
+.verify-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.verify-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.verify-name {
+  font-family: var(--font-serif);
+  font-size: var(--fs-2xl);
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.verify-info {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+  line-height: 1.8;
+  margin-bottom: 8px;
+}
+
+.verify-error {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lg);
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ============================================================
+   ADMIN VIEW
+   ============================================================ */
+.admin-view {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+.admin-back-btn {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 20px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.admin-title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.admin-stats {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  color: #7a6e60;
+  margin-bottom: 20px;
+}
+
+.admin-grid {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 30px;
+}
+
+.admin-cell {
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 70px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+}
+
+.admin-cell.occupied {
+  background: #ffffff;
+  border: 1px solid var(--accent-dim);
+}
+
+.admin-cell.occupied.current {
+  background: #fef5ee;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 8px rgba(224,120,80,0.3);
+}
+
+.admin-cell.empty {
+  background: #f9f5ef;
+  border: 1px dashed #ccc4b8;
+}
+
+.admin-cell-title {
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: #3a3028;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-cell-file {
+  color: #7a6e60;
+  font-size: var(--fs-xs);
+  margin-bottom: 4px;
+}
+
+.admin-cell-dirs {
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.admin-cell-info {
+  color: #7a6e60;
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+}
+
+.admin-cell-empty-label {
+  color: #b0a898;
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.admin-subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.admin-conn-list {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: #7a6e60;
+}
+
+.admin-conn-item {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   COLLECTIBLE TOAST
+   ============================================================ */
+.collectible-toast {
+  position: fixed;
+  top: 60px; left: 50%; transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 8px 20px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 150;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.collectible-toast.hidden { opacity: 0; transform: translateX(-50%) translateY(-20px); pointer-events: none; }
+.collectible-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.collectible-toast-label { font-size: var(--fs-xs); color: var(--text-muted); }
+.collectible-toast-name { font-size: var(--fs-md); font-weight: 700; color: var(--accent); }
+
+/* ============================================================
+   COLLECTIBLES TAB
+   ============================================================ */
+.collectibles-count {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.collectibles-empty {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px 0;
+}
+
+.collectibles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 540px) {
+  .collectibles-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+.collectible-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.collectible-card-name {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.collectible-card-room {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* Collectible badge on interaction cards */
+.interaction-collectible-badge {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  color: var(--accent);
+  background: rgba(224,120,80,0.08);
+  border: 1px solid rgba(224,120,80,0.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-top: 8px;
+  display: inline-block;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+  <!-- Loading -->
+  <div id="loading-screen">
+    <span class="loading-text">正在載入辦公室...</span>
+  </div>
+
+  <!-- Welcome -->
+  <div id="welcome-screen" class="hidden">
+    <canvas id="dust-canvas"></canvas>
+    <div class="welcome-title">均一辦公室探險</div>
+    <div class="welcome-subtitle" id="welcome-subtitle"></div>
+    <div class="welcome-intro">
+      午休時間，你決定好好探索一下辦公室的每個角落。每個場景都藏著驚喜，每個選擇都會寫進你的故事。
+    </div>
+    <div class="welcome-quest">
+      <div class="welcome-quest-title">你的任務</div>
+      <div class="welcome-quest-chars">
+        <span class="welcome-char-box">均</span>
+        <span class="welcome-char-box">一</span>
+        <span class="welcome-char-box">挺</span>
+        <span class="welcome-char-box">開</span>
+        <span class="welcome-char-box">源</span>
+      </div>
+      <div class="welcome-quest-desc">在辦公室各處找到這五個字，集齊即可獲得「均一挺開源」匾額</div>
+    </div>
+    <button class="welcome-btn" id="btn-start">開始探險</button>
+    <button class="welcome-btn secondary hidden" id="btn-continue"></button>
+    <button class="welcome-btn hidden" id="btn-welcome-reset" style="background:transparent;border:1px solid #b0a898;color:#7a6e60;font-size:var(--fs-sm);margin-top:8px">重置所有進度</button>
+    <button class="welcome-btn" id="btn-admin" style="background:transparent;border:none;color:var(--text-muted);font-size:var(--fs-xs);margin-top:16px;text-decoration:underline;padding:4px">偷看地圖（作弊模式）</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game-screen">
+    <div id="top-bar">
+      <div id="char-collection"></div>
+      <div id="minimap-btn">
+        <canvas id="minimap-canvas" width="144" height="144"></canvas>
+      </div>
+    </div>
+    <div id="room-scroll"><div id="room-content"></div></div>
+    <div id="bottom-bar">
+      <button class="bottom-btn" id="btn-journal">故事書</button>
+      <span id="progress-label">已探索 0/0</span>
+      <button class="bottom-btn" id="btn-map">地圖</button>
+      <button class="bottom-btn" id="btn-home" style="font-size:var(--fs-xs)">首頁</button>
+    </div>
+  </div>
+
+  <!-- Transition -->
+  <div id="transition-overlay"><span id="transition-text"></span></div>
+
+  <!-- Journal -->
+  <div id="journal-overlay">
+    <div id="journal-header">
+      <button class="journal-tab active" id="tab-story" data-tab="story">我的故事</button>
+      <button class="journal-tab" id="tab-log" data-tab="log">冒險日誌</button>
+      <button class="journal-tab" id="tab-collectibles" data-tab="collectibles">收藏品</button>
+      <button id="journal-close">關閉</button>
+    </div>
+    <div id="journal-content"></div>
+  </div>
+
+  <!-- Full map -->
+  <div id="map-overlay">
+    <div id="map-header">
+      <span id="map-title">辦公室地圖</span>
+      <button id="map-close">關閉</button>
+    </div>
+    <div id="map-canvas-container">
+      <canvas id="map-canvas"></canvas>
+      <div id="map-tooltip" class="map-tooltip hidden"></div>
+    </div>
+  </div>
+
+  <!-- Collectible toast -->
+  <div id="collectible-toast" class="collectible-toast hidden">
+    <div class="collectible-toast-label">獲得收藏品</div>
+    <div id="collectible-toast-name" class="collectible-toast-name"></div>
+  </div>
+
+  <!-- Char discovery overlay -->
+  <div id="char-discovery-overlay">
+    <div id="char-discovery-char"></div>
+    <div id="char-discovery-msg"></div>
+  </div>
+
+  <!-- Completion overlay -->
+  <div id="completion-overlay"></div>
+</div>
+
+<script>
+/* ================================================================
+   均一辦公室探險 -- Game Engine
+   Choose-one-per-visit / Personal Story / Explorer Personality
+   ================================================================ */
+(function () {
+'use strict';
+
+/* ----------------------------------------------------------------
+   SEEDED PRNG -- Mulberry32
+   ---------------------------------------------------------------- */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0;
+    seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashStr(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+/* ----------------------------------------------------------------
+   MARKDOWN PARSER
+   ---------------------------------------------------------------- */
+function parseRoom(md, filename) {
+  var lines = md.split('\n');
+  var title = '';
+  var descLines = [];
+  var interactions = [];
+
+  for (var i = 0; i < lines.length; i++) {
+    var trimmed = lines[i].trim();
+
+    // Title (first # heading)
+    if (!title && /^#\s+(.+)/.test(trimmed)) {
+      title = trimmed.replace(/^#\s+/, '');
+      continue;
+    }
+
+    // Skip ## headings (legacy section headers, ignored)
+    if (/^##\s+/.test(trimmed)) continue;
+
+    // Skip blank lines
+    if (trimmed === '') continue;
+
+    // Lines starting with - are interactions: - action：result
+    if (/^[-\u2010\u2011\u2012\u2013\u2014\u2015\uFF0D\u30FC*]\s*/.test(trimmed)) {
+      // Accept: - dash, various unicode dashes, fullwidth dash, * asterisk
+      // With or without space after
+      var content = trimmed.replace(/^[-\u2010\u2011\u2012\u2013\u2014\u2015\uFF0D\u30FC*]\s*/, '');
+      var m = content.match(/^(.+?)[：:]\s*(.+)$/);
+      if (m) {
+        var rawResult = m[2].trim();
+        var collectible = null;
+        var cm = rawResult.match(/\*(.+?)\*\s*$/);
+        if (cm) {
+          collectible = cm[1].trim();
+          rawResult = rawResult.replace(/\*(.+?)\*\s*$/, '').trim();
+        }
+        interactions.push({ label: m[1].trim(), result: rawResult, collectible: collectible });
+      }
+      continue;
+    }
+
+    // Everything else → description
+    descLines.push(trimmed);
+  }
+
+  if (!title) title = filename.replace(/\.md$/, '');
+
+  return {
+    filename: filename,
+    title: title,
+    description: descLines.join('\n\n'),
+    interactions: interactions
+  };
+}
+
+/* ----------------------------------------------------------------
+   DIRECTION HELPERS
+   ---------------------------------------------------------------- */
+var DIR_INFO = {
+  '往北': { dx:  0, dy: -1, opp: '往南' },
+  '往南': { dx:  0, dy:  1, opp: '往北' },
+  '往東': { dx:  1, dy:  0, opp: '往西' },
+  '往西': { dx: -1, dy:  0, opp: '往東' },
+  '往上': { dx:  0, dy: -1, opp: '往下' },
+  '往下': { dx:  0, dy:  1, opp: '往上' }
+};
+
+var CANONICAL = { '往上': '往北', '往下': '往南' };
+function canon(d) { return CANONICAL[d] || d; }
+
+/* Direction transition phrases */
+var DIR_PHRASES = {
+  '往北': '你往走廊深處走去。',
+  '往南': '你轉身往回走。',
+  '往東': '你推開右邊的門。',
+  '往西': '你轉進左邊的走廊。'
+};
+
+/* ----------------------------------------------------------------
+   GAME STATE
+   ---------------------------------------------------------------- */
+var G = {
+  rooms: [],           // sorted by filename
+  roomMap: {},         // filename -> room object
+  roomIdx: {},         // filename -> index
+  conns: {},           // filename -> { direction: targetFilename }
+  cur: null,           // current room filename
+  prev: null,
+  visited: {},         // filename -> true
+  choices: {},         // filename -> [interactionIndex, ...]
+  choiceResults: {},   // filename -> [{action, result}]
+  positions: {},       // filename -> {x, y}
+  log: [],             // [{type, room, action, result, direction, time}]
+  hiddenChars: {},     // filename -> { interactionIdx, char }
+  collectedChars: { '\u5747': false, '\u4E00': false, '\u633A': false, '\u958B': false, '\u6E90': false },
+  collectibles: [],    // [{name, room, roomTitle}]
+  playerName: ''       // set on completion
+};
+
+var SAVE_KEY = 'office-adventure-v1';
+
+/* ----------------------------------------------------------------
+   BROWSER HISTORY (back/forward support)
+   ---------------------------------------------------------------- */
+var historyReady = false; // set true after initial load
+
+function pushHistory(view) {
+  if (!historyReady) return;
+  var hash = '#' + view;
+  if (location.hash !== hash) {
+    history.pushState({ view: view }, '', hash);
+  }
+}
+
+function handlePopState(e) {
+  var state = e.state;
+  var view = state ? state.view : 'home';
+
+  // Close any overlays
+  $('journal-overlay').classList.remove('active');
+  $('map-overlay').classList.remove('active');
+
+  if (view === 'game') {
+    $('welcome-screen').classList.add('hidden');
+    $('game-screen').classList.add('active');
+    renderRoom();
+    updateProgress();
+    renderMinimap();
+  } else if (view === 'journal') {
+    $('welcome-screen').classList.add('hidden');
+    $('game-screen').classList.add('active');
+    $('journal-overlay').classList.add('active');
+  } else {
+    // home
+    stopDust();
+    $('game-screen').classList.remove('active');
+    $('welcome-screen').classList.remove('hidden');
+    var visitCount = Object.keys(G.visited).length;
+    if (visitCount > 0) {
+      var continueBtn = $('btn-continue');
+      continueBtn.textContent = '\u7E7C\u7E8C\u63A2\u96AA (\u5DF2\u63A2\u7D22 ' + visitCount + ' \u500B\u5834\u666F)';
+      continueBtn.classList.remove('hidden');
+      $('btn-welcome-reset').classList.remove('hidden');
+    }
+    initDust();
+  }
+}
+
+function save() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      cur: G.cur, visited: G.visited, choices: G.choices,
+      choiceResults: G.choiceResults, positions: G.positions,
+      log: G.log,
+      collectedChars: G.collectedChars, collectibles: G.collectibles,
+      playerName: G.playerName
+    }));
+  } catch (e) {}
+}
+
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); }
+  catch (e) { return null; }
+}
+
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+}
+
+/* ----------------------------------------------------------------
+   BUILD ROOM CONNECTIONS
+   ---------------------------------------------------------------- */
+function buildConnections() {
+  // Grid-based map with STABLE hash positioning.
+  // Each room's position is determined by hash(filename).
+  // After placement, isolated rooms (no grid neighbors) get a "tunnel"
+  // connection to the nearest occupied room, so every room is reachable.
+
+  var rooms = G.rooms;
+  if (!rooms.length) return;
+
+  var n = rooms.length;
+
+  // --- Step 1: Grid dimensions ---
+  var cols = 10, rows = 10;
+  var totalSlots = cols * rows;
+
+  // --- Step 2: Place rooms by filename hash (stable positioning) ---
+  var grid = [];
+  for (var r = 0; r < rows; r++) {
+    grid[r] = [];
+    for (var c = 0; c < cols; c++) grid[r][c] = null;
+  }
+
+  var occupied = {};
+
+  for (var i = 0; i < n; i++) {
+    var fn = rooms[i].filename;
+    var h = hashStr(fn);
+    var slot = Math.abs(h) % totalSlots;
+
+    for (var attempt = 0; attempt < totalSlots; attempt++) {
+      var idx = (slot + attempt) % totalSlots;
+      var r = Math.floor(idx / cols), c = idx % cols;
+      var key = c + ',' + r;
+      if (!occupied[key]) {
+        grid[r][c] = fn;
+        G.positions[fn] = { x: c, y: r };
+        occupied[key] = true;
+        break;
+      }
+    }
+  }
+
+  // --- Step 2b: Compact (remove empty rows/cols) ---
+  var usedRows = {}, usedCols = {};
+  for (var i = 0; i < n; i++) {
+    var p = G.positions[rooms[i].filename];
+    usedRows[p.y] = true;
+    usedCols[p.x] = true;
+  }
+
+  var rowList = Object.keys(usedRows).map(Number).sort(function(a,b){return a-b;});
+  var colList = Object.keys(usedCols).map(Number).sort(function(a,b){return a-b;});
+  var rowMap = {}, colMap = {};
+  for (var i = 0; i < rowList.length; i++) rowMap[rowList[i]] = i;
+  for (var i = 0; i < colList.length; i++) colMap[colList[i]] = i;
+
+  var compactRows = rowList.length, compactCols = colList.length;
+  var compactGrid = [];
+  for (var r = 0; r < compactRows; r++) {
+    compactGrid[r] = [];
+    for (var c = 0; c < compactCols; c++) compactGrid[r][c] = null;
+  }
+
+  for (var i = 0; i < n; i++) {
+    var fn = rooms[i].filename;
+    var p = G.positions[fn];
+    var nr = rowMap[p.y], nc = colMap[p.x];
+    compactGrid[nr][nc] = fn;
+    G.positions[fn] = { x: nc, y: nr };
+  }
+
+  grid = compactGrid;
+  rows = compactRows;
+  cols = compactCols;
+
+  // --- Step 3: Connect all rooms via ray-cast ---
+  // Simple rule: in each direction (N/S/E/W), scan along the row/column
+  // skipping empty cells, and connect to the nearest room found.
+  // No maze walls, no random blocking. If there's a room in that direction, you can go there.
+  // This is fully deterministic and stable — adding a new room only affects
+  // connections in its row and column.
+
+  var conns = {};
+  for (var i = 0; i < n; i++) conns[rooms[i].filename] = {};
+
+  var scans = [
+    { dc: 0, dr: -1, dir: '\u5F80\u5317', opp: '\u5F80\u5357' },
+    { dc: 0, dr:  1, dir: '\u5F80\u5357', opp: '\u5F80\u5317' },
+    { dc: 1, dr:  0, dir: '\u5F80\u6771', opp: '\u5F80\u897F' },
+    { dc:-1, dr:  0, dir: '\u5F80\u897F', opp: '\u5F80\u6771' }
+  ];
+
+  for (var i = 0; i < n; i++) {
+    var fn = rooms[i].filename;
+    var p = G.positions[fn];
+    for (var s = 0; s < scans.length; s++) {
+      var sc = scans[s];
+      var r = p.y + sc.dr, c = p.x + sc.dc;
+      while (r >= 0 && r < rows && c >= 0 && c < cols) {
+        if (grid[r][c]) {
+          conns[fn][sc.dir] = grid[r][c];
+          break;
+        }
+        r += sc.dr;
+        c += sc.dc;
+      }
+    }
+  }
+
+  G.conns = conns;
+  G.gridCols = cols;
+  G.gridRows = rows;
+}
+
+/* ----------------------------------------------------------------
+   DOM HELPERS
+   ---------------------------------------------------------------- */
+function el(tag, cls, txt) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (txt !== undefined) e.textContent = txt;
+  return e;
+}
+
+function clearEl(container) {
+  while (container.firstChild) container.removeChild(container.firstChild);
+}
+
+function $(id) { return document.getElementById(id); }
+
+function copyText(text, btn, original) {
+  function done() {
+    btn.textContent = '\u5DF2\u8907\u88FD';
+    setTimeout(function () { btn.textContent = original; }, 2000);
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
+  } catch (e) { fallback(); }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  }
+}
+
+/* ----------------------------------------------------------------
+   DUST PARTICLES (welcome screen -- warm lamplight dust)
+   ---------------------------------------------------------------- */
+var dustAnim = null;
+
+function initDust() {
+  var c = $('dust-canvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var w, h;
+
+  function resize() {
+    w = c.parentElement.clientWidth;
+    h = c.parentElement.clientHeight;
+    c.width = w * dpr; c.height = h * dpr;
+    c.style.width = w + 'px'; c.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  var pts = [];
+  for (var i = 0; i < 40; i++) {
+    pts.push({
+      x: Math.random() * 600, y: Math.random() * 900,
+      r: Math.random() * 2 + 0.5,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: -Math.random() * 0.2 - 0.05,
+      a: Math.random() * 0.3 + 0.1,
+      ph: Math.random() * Math.PI * 2
+    });
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, w, h);
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.y < -5) { p.y = h + 5; p.x = Math.random() * w; }
+      if (p.x < -5) p.x = w + 5;
+      if (p.x > w + 5) p.x = -5;
+      var alpha = p.a * (0.4 + 0.6 * Math.sin(t * 0.0008 + p.ph));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(224,180,130,' + alpha + ')';
+      ctx.fill();
+    }
+    dustAnim = requestAnimationFrame(draw);
+  }
+  dustAnim = requestAnimationFrame(draw);
+}
+
+function stopDust() {
+  if (dustAnim) { cancelAnimationFrame(dustAnim); dustAnim = null; }
+}
+
+/* ----------------------------------------------------------------
+   MINIMAP RENDERER (top-right 72x72)
+   ---------------------------------------------------------------- */
+function getUnvisitedNeighbors() {
+  var result = [], seen = {};
+  for (var fn in G.visited) {
+    var cc = G.conns[fn];
+    if (!cc) continue;
+    for (var d in cc) {
+      var t = cc[d];
+      if (G.visited[t] || seen[t]) continue;
+      // Use the actual grid position of the target room (not ±1 offset)
+      var tp = G.positions[t];
+      if (tp) {
+        result.push({ fn: t, x: tp.x, y: tp.y });
+        seen[t] = true;
+      }
+    }
+  }
+  return result;
+}
+
+function renderMinimap() {
+  var canvas = $('minimap-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var sz = 72;
+  canvas.width = sz * dpr; canvas.height = sz * dpr;
+  canvas.style.width = sz + 'px'; canvas.style.height = sz + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, sz, sz);
+
+  var visitedKeys = [];
+  for (var fn in G.visited) {
+    if (G.positions[fn]) visitedKeys.push(fn);
+  }
+  if (!visitedKeys.length) return;
+
+  var neighbors = getUnvisitedNeighbors();
+
+  // Compute bounds from visited + neighbors
+  var allPts = [];
+  for (var i = 0; i < visitedKeys.length; i++) allPts.push(G.positions[visitedKeys[i]]);
+  for (var i = 0; i < neighbors.length; i++) allPts.push(neighbors[i]);
+
+  var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (var i = 0; i < allPts.length; i++) {
+    if (allPts[i].x < minX) minX = allPts[i].x;
+    if (allPts[i].x > maxX) maxX = allPts[i].x;
+    if (allPts[i].y < minY) minY = allPts[i].y;
+    if (allPts[i].y > maxY) maxY = allPts[i].y;
+  }
+
+  var rx = (maxX - minX) + 1, ry = (maxY - minY) + 1;
+  var pad = 4;
+  var cellW = Math.min((sz - pad * 2) / rx, (sz - pad * 2) / ry, 10);
+  var gap = 1;
+  var startX = (sz - rx * cellW) / 2;
+  var startY = (sz - ry * cellW) / 2;
+
+  function cellXY(gx, gy) {
+    return { x: startX + (gx - minX) * cellW, y: startY + (gy - minY) * cellW };
+  }
+
+  // Draw visited room cells as filled squares
+  for (var i = 0; i < visitedKeys.length; i++) {
+    var fn = visitedKeys[i];
+    var p = G.positions[fn];
+    var c = cellXY(p.x, p.y);
+    var isCur = fn === G.cur;
+    ctx.fillStyle = isCur ? '#e07850' : '#c4674a';
+    ctx.fillRect(c.x + gap, c.y + gap, cellW - gap * 2, cellW - gap * 2);
+  }
+
+  // Draw unvisited neighbor cells as dim outlines
+  for (var i = 0; i < neighbors.length; i++) {
+    var n = neighbors[i];
+    var c = cellXY(n.x, n.y);
+    ctx.strokeStyle = 'rgba(180,170,155,0.5)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(c.x + gap, c.y + gap, cellW - gap * 2, cellW - gap * 2);
+  }
+}
+
+/* ----------------------------------------------------------------
+   FULL MAP RENDERER
+   ---------------------------------------------------------------- */
+var mapSt = { px: 0, py: 0, sc: 1, drag: false, lx: 0, ly: 0 };
+
+function renderFullMap() {
+  var container = $('map-canvas-container');
+  var canvas = $('map-canvas');
+  if (!canvas || !container) return;
+
+  var dpr = window.devicePixelRatio || 1;
+  var cw = container.clientWidth, ch = container.clientHeight;
+  canvas.width = cw * dpr; canvas.height = ch * dpr;
+  canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+
+  // Fog of war
+  var visitedKeys = [];
+  for (var fn in G.visited) {
+    if (G.positions[fn]) visitedKeys.push(fn);
+  }
+  if (!visitedKeys.length) return;
+
+  var neighbors = getUnvisitedNeighbors();
+  var nPosMap = {};
+  for (var i = 0; i < neighbors.length; i++) {
+    nPosMap[neighbors[i].x + ',' + neighbors[i].y] = neighbors[i];
+  }
+
+  // Grid cell size
+  var cellSize = 80 * mapSt.sc;
+  var wallThick = 3 * mapSt.sc;
+  var gap = 4 * mapSt.sc;
+  var innerSize = cellSize - gap * 2;
+  var ox = cw / 2 + mapSt.px, oy = ch / 2 + mapSt.py;
+
+  function cellXY(gx, gy) {
+    return {
+      x: ox + gx * cellSize - cellSize / 2,
+      y: oy + gy * cellSize - cellSize / 2
+    };
+  }
+
+  // --- Draw visited rooms as grid cells ---
+  for (var i = 0; i < visitedKeys.length; i++) {
+    var fn = visitedKeys[i];
+    var p = G.positions[fn];
+    var c = cellXY(p.x, p.y);
+    var isCur = fn === G.cur;
+    var room = G.roomMap[fn];
+    var cc = G.conns[fn];
+
+    // Cell background
+    ctx.fillStyle = isCur ? '#fff5ee' : '#ffffff';
+    ctx.fillRect(c.x + gap, c.y + gap, innerSize, innerSize);
+
+    // Cell border (draw walls, leave gaps where connections exist)
+    ctx.strokeStyle = '#d5cbbe';
+    ctx.lineWidth = wallThick;
+
+    // Walls: only draw where there is NO connection (regardless of visited status)
+    // Top wall (north)
+    if (!cc['\u5F80\u5317']) {
+      ctx.beginPath(); ctx.moveTo(c.x + gap, c.y + gap); ctx.lineTo(c.x + gap + innerSize, c.y + gap); ctx.stroke();
+    }
+    // Bottom wall (south)
+    if (!cc['\u5F80\u5357']) {
+      ctx.beginPath(); ctx.moveTo(c.x + gap, c.y + gap + innerSize); ctx.lineTo(c.x + gap + innerSize, c.y + gap + innerSize); ctx.stroke();
+    }
+    // Left wall (west)
+    if (!cc['\u5F80\u897F']) {
+      ctx.beginPath(); ctx.moveTo(c.x + gap, c.y + gap); ctx.lineTo(c.x + gap, c.y + gap + innerSize); ctx.stroke();
+    }
+    // Right wall (east)
+    if (!cc['\u5F80\u6771']) {
+      ctx.beginPath(); ctx.moveTo(c.x + gap + innerSize, c.y + gap); ctx.lineTo(c.x + gap + innerSize, c.y + gap + innerSize); ctx.stroke();
+    }
+
+    // Current room accent border
+    if (isCur) {
+      ctx.strokeStyle = '#e07850';
+      ctx.lineWidth = 2.5 * mapSt.sc;
+      ctx.strokeRect(c.x + gap + 1, c.y + gap + 1, innerSize - 2, innerSize - 2);
+    }
+
+    // Room name
+    var name = room ? room.title : fn;
+    if (name.length > 5) name = name.substring(0, 5) + '..';
+    ctx.fillStyle = isCur ? '#e07850' : '#5a5045';
+    ctx.font = 'bold ' + (11 * mapSt.sc) + 'px "Noto Sans TC"';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(name, c.x + cellSize / 2, c.y + cellSize / 2);
+  }
+
+  // --- Draw unvisited neighbor cells as dim dashed outlines ---
+  for (var i = 0; i < neighbors.length; i++) {
+    var n = neighbors[i];
+    var c = cellXY(n.x, n.y);
+
+    ctx.setLineDash([3 * mapSt.sc, 3 * mapSt.sc]);
+    ctx.strokeStyle = 'rgba(180,170,155,0.5)';
+    ctx.lineWidth = 1.5 * mapSt.sc;
+    ctx.strokeRect(c.x + gap, c.y + gap, innerSize, innerSize);
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = 'rgba(150,140,130,0.5)';
+    ctx.font = (12 * mapSt.sc) + 'px "Noto Sans TC"';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('?', c.x + cellSize / 2, c.y + cellSize / 2);
+  }
+}
+
+function initMapControls() {
+  var container = $('map-canvas-container');
+  if (!container) return;
+
+  // Mouse drag
+  container.addEventListener('mousedown', function (e) {
+    mapSt.drag = true; mapSt.lx = e.clientX; mapSt.ly = e.clientY;
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!mapSt.drag) return;
+    mapSt.px += e.clientX - mapSt.lx;
+    mapSt.py += e.clientY - mapSt.ly;
+    mapSt.lx = e.clientX; mapSt.ly = e.clientY;
+    renderFullMap();
+  });
+  window.addEventListener('mouseup', function () { mapSt.drag = false; });
+
+  // Mouse wheel zoom
+  container.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var d = e.deltaY > 0 ? 0.9 : 1.1;
+    mapSt.sc = Math.max(0.3, Math.min(3, mapSt.sc * d));
+    renderFullMap();
+  }, { passive: false });
+
+  // Touch pan
+  var touchId = null, lastTouch = null;
+  var pinchDist = 0;
+
+  container.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 1) {
+      touchId = e.touches[0].identifier;
+      lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if (e.touches.length === 2) {
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchDist = Math.sqrt(dx * dx + dy * dy);
+    }
+  });
+
+  container.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    if (e.touches.length === 1 && lastTouch) {
+      var t = e.touches[0];
+      mapSt.px += t.clientX - lastTouch.x;
+      mapSt.py += t.clientY - lastTouch.y;
+      lastTouch = { x: t.clientX, y: t.clientY };
+      renderFullMap();
+    } else if (e.touches.length === 2) {
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (pinchDist > 0) {
+        var scale = dist / pinchDist;
+        mapSt.sc = Math.max(0.3, Math.min(3, mapSt.sc * scale));
+      }
+      pinchDist = dist;
+      renderFullMap();
+    }
+  }, { passive: false });
+
+  container.addEventListener('touchend', function (e) {
+    if (e.touches.length === 0) {
+      touchId = null; lastTouch = null; pinchDist = 0;
+    } else if (e.touches.length === 1) {
+      lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      pinchDist = 0;
+    }
+  });
+
+  // Click/tap to show room name tooltip
+  var tooltip = $('map-tooltip');
+  var dragMoved = false;
+  var dragStartPos = null;
+
+  container.addEventListener('mousedown', function (e) {
+    dragStartPos = { x: e.clientX, y: e.clientY };
+    dragMoved = false;
+  }, true);
+
+  container.addEventListener('mousemove', function () {
+    if (dragStartPos) dragMoved = true;
+  }, true);
+
+  container.addEventListener('click', function (e) {
+    // Ignore if it was a drag
+    if (dragMoved && dragStartPos) {
+      var dx = e.clientX - dragStartPos.x, dy = e.clientY - dragStartPos.y;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) { dragStartPos = null; return; }
+    }
+    dragStartPos = null;
+    handleMapClick(e, container, tooltip);
+  });
+
+  // Touch tap
+  var tapStart = null;
+  container.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 1) tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, true);
+
+  container.addEventListener('touchend', function (e) {
+    if (!tapStart || e.touches.length > 0) { tapStart = null; return; }
+    var dt = Date.now() - tapStart.t;
+    if (dt < 300) {
+      handleMapClick({ clientX: tapStart.x, clientY: tapStart.y }, container, tooltip);
+    }
+    tapStart = null;
+  }, true);
+}
+
+function handleMapClick(e, container, tooltip) {
+  var rect = container.getBoundingClientRect();
+  var clickX = e.clientX - rect.left;
+  var clickY = e.clientY - rect.top;
+
+  var cellSize = 80 * mapSt.sc;
+  var cw = container.clientWidth, ch = container.clientHeight;
+  var ox = cw / 2 + mapSt.px, oy = ch / 2 + mapSt.py;
+  var gap = 4 * mapSt.sc;
+
+  // Check visited rooms
+  var found = null;
+  for (var fn in G.visited) {
+    var p = G.positions[fn];
+    if (!p) continue;
+    var cx = ox + p.x * cellSize - cellSize / 2 + gap;
+    var cy = oy + p.y * cellSize - cellSize / 2 + gap;
+    var inner = cellSize - gap * 2;
+    if (clickX >= cx && clickX <= cx + inner && clickY >= cy && clickY <= cy + inner) {
+      found = fn;
+      break;
+    }
+  }
+
+  if (found) {
+    var room = G.roomMap[found];
+    tooltip.textContent = room ? room.title : found;
+    tooltip.style.left = clickX + 'px';
+    tooltip.style.top = (clickY - 4) + 'px';
+    tooltip.classList.remove('hidden');
+    setTimeout(function () { tooltip.classList.add('hidden'); }, 2000);
+  } else {
+    tooltip.classList.add('hidden');
+  }
+}
+
+/* Positions are pre-computed by the grid in buildConnections() */
+
+/* ----------------------------------------------------------------
+   UI UPDATE HELPERS
+   ---------------------------------------------------------------- */
+function updateProgress() {
+  var visited = Object.keys(G.visited).length;
+  var total = G.rooms.length;
+  $('progress-label').textContent = '\u5DF2\u63A2\u7D22 ' + visited + '/' + total;
+  updateCharBoxes();
+}
+
+/* ----------------------------------------------------------------
+   CHAR COLLECTION UI
+   ---------------------------------------------------------------- */
+var COLLECT_CHARS = ['\u5747', '\u4E00', '\u633A', '\u958B', '\u6E90'];
+
+function updateCharBoxes() {
+  var container = $('char-collection');
+  if (!container) return;
+  clearEl(container);
+
+  // Label
+  var label = el('span', 'char-label', '集字');
+  container.appendChild(label);
+
+  for (var i = 0; i < COLLECT_CHARS.length; i++) {
+    var ch = COLLECT_CHARS[i];
+    var box = el('div', 'char-box');
+    if (G.collectedChars[ch]) {
+      box.classList.add('found');
+      box.textContent = ch;
+    } else {
+      box.classList.add('empty');
+      box.textContent = '?';
+    }
+    container.appendChild(box);
+  }
+}
+
+/* ----------------------------------------------------------------
+   ASSIGN HIDDEN CHARS (seeded, deterministic)
+   ---------------------------------------------------------------- */
+function assignHiddenChars() {
+  // Place 5 characters in 5 rooms. Finding = entering the room (no interaction needed).
+  var rng = mulberry32(hashStr('collect-chars-v2'));
+  var chars = ['\u5747', '\u4E00', '\u633A', '\u958B', '\u6E90'];
+  var charCount = chars.length;
+  var roomCount = G.rooms.length;
+  if (roomCount < charCount) return;
+
+  var pool = [];
+  for (var i = 0; i < roomCount; i++) pool.push(i);
+
+  // Fisher-Yates partial shuffle to pick 5
+  for (var i = 0; i < charCount; i++) {
+    var j = i + Math.floor(rng() * (pool.length - i));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+
+  G.hiddenChars = {};
+  for (var i = 0; i < charCount; i++) {
+    var fn = G.rooms[pool[i]].filename;
+    G.hiddenChars[fn] = { char: chars[i] };
+  }
+}
+
+function getHintForNextChar() {
+  // Find the next uncollected char and give a directional hint
+  for (var i = 0; i < COLLECT_CHARS.length; i++) {
+    var ch = COLLECT_CHARS[i];
+    if (G.collectedChars[ch]) continue;
+    // Find the room with this char
+    for (var fn in G.hiddenChars) {
+      if (G.hiddenChars[fn].char === ch) {
+        var target = G.positions[fn];
+        var cur = G.positions[G.cur];
+        if (!target || !cur) return null;
+        var dx = target.x - cur.x;
+        var dy = target.y - cur.y;
+        // Describe direction
+        var parts = [];
+        if (dy < 0) parts.push('\u5317');
+        if (dy > 0) parts.push('\u5357');
+        if (dx > 0) parts.push('\u6771');
+        if (dx < 0) parts.push('\u897F');
+        var dist = Math.abs(dx) + Math.abs(dy);
+        var distWord = dist <= 2 ? '\u5F88\u8FD1' : dist <= 5 ? '\u4E0D\u9060' : '\u9084\u6709\u4E00\u6BB5\u8DEF';
+        if (parts.length === 0) return '\u300C' + ch + '\u300D\u5C31\u5728\u9019\u88E1\u9644\u8FD1\uFF01';
+        return '\u300C' + ch + '\u300D\u5728' + parts.join('') + '\u65B9\uFF0C' + distWord + '\u3002';
+      }
+    }
+  }
+  return null;
+}
+
+/* ----------------------------------------------------------------
+   CHAR DISCOVERY OVERLAY
+   ---------------------------------------------------------------- */
+function showCharDiscovery(ch) {
+  var overlay = $('char-discovery-overlay');
+  $('char-discovery-char').textContent = ch;
+
+  var msg = '\u4F60\u627E\u5230\u4E86\u300C' + ch + '\u300D\uFF01';
+  var hint = getHintForNextChar();
+  if (hint) {
+    msg += '\n' + hint;
+  }
+  $('char-discovery-msg').textContent = msg;
+  $('char-discovery-msg').style.whiteSpace = 'pre-line';
+  overlay.classList.add('active');
+
+  var dismissed = false;
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    overlay.classList.remove('active');
+    // Check if all collected
+    var allDone = true;
+    for (var i = 0; i < COLLECT_CHARS.length; i++) {
+      if (!G.collectedChars[COLLECT_CHARS[i]]) { allDone = false; break; }
+    }
+    if (allDone) {
+      setTimeout(showCompletionScreen, 1000);
+    }
+  }
+
+  overlay.onclick = dismiss;
+  setTimeout(dismiss, 2000);
+}
+
+/* ----------------------------------------------------------------
+   COLLECTIBLE TOAST NOTIFICATION
+   ---------------------------------------------------------------- */
+function showCollectibleToast(itemName) {
+  var toast = $('collectible-toast');
+  $('collectible-toast-name').textContent = itemName;
+  toast.classList.remove('hidden');
+  toast.classList.add('show');
+
+  setTimeout(function () {
+    toast.classList.remove('show');
+    toast.classList.add('hidden');
+  }, 1500);
+}
+
+/* ----------------------------------------------------------------
+   CHECK HIDDEN CHAR ON INTERACTION
+   ---------------------------------------------------------------- */
+function checkRoomChar(roomFilename) {
+  var hidden = G.hiddenChars[roomFilename];
+  if (!hidden) return;
+  if (G.collectedChars[hidden.char]) return;
+
+  G.collectedChars[hidden.char] = true;
+  save();
+  updateCharBoxes();
+  showCharDiscovery(hidden.char);
+}
+
+/* ----------------------------------------------------------------
+   COMPLETION SCREEN
+   ---------------------------------------------------------------- */
+function showCompletionScreen() {
+  var overlay = $('completion-overlay');
+  clearEl(overlay);
+  overlay.classList.add('active');
+
+  overlay.appendChild(el('div', 'completion-title', '\u5747\u4E00\u633A\u958B\u6E90'));
+  overlay.appendChild(el('div', 'completion-subtitle', '\u606D\u559C\u4F60\u96C6\u9F4A\u4E86\u300C\u5747\u4E00\u633A\u958B\u6E90\u300D\uFF01'));
+
+  var inputGroup = el('div', 'completion-input-group');
+  inputGroup.appendChild(el('div', 'completion-input-label', '\u8ACB\u8F38\u5165\u4F60\u7684\u540D\u5B57'));
+
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'completion-input';
+  nameInput.maxLength = 20;
+  nameInput.placeholder = '\u4F60\u7684\u540D\u5B57';
+  if (G.playerName) nameInput.value = G.playerName;
+  inputGroup.appendChild(nameInput);
+
+  var genBtn = el('button', 'completion-generate-btn', '\u751F\u6210\u533E\u984D');
+  inputGroup.appendChild(genBtn);
+  overlay.appendChild(inputGroup);
+
+  var plaqueContainer = el('div');
+  plaqueContainer.id = 'plaque-container';
+  var plaqueCanvas = document.createElement('canvas');
+  plaqueCanvas.id = 'plaque-canvas';
+  plaqueCanvas.width = 600;
+  plaqueCanvas.height = 400;
+  plaqueContainer.appendChild(plaqueCanvas);
+  overlay.appendChild(plaqueContainer);
+
+  var actions = el('div', 'completion-actions');
+  actions.id = 'completion-actions';
+  actions.style.display = 'none';
+  overlay.appendChild(actions);
+
+  genBtn.addEventListener('click', function () {
+    var name = nameInput.value.trim();
+    if (!name) { nameInput.focus(); return; }
+    G.playerName = name;
+    save();
+    generatePlaque(plaqueCanvas, name);
+    plaqueContainer.classList.add('visible');
+    buildCompletionActions(actions, plaqueCanvas, name);
+    actions.style.display = 'flex';
+  });
+}
+
+function generatePlaque(canvas, name) {
+  var w = 600, h = 440;
+  var dpr = window.devicePixelRatio || 1;
+  if (dpr < 2) dpr = 2; // minimum 2x for sharp output
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // -- Background with subtle texture --
+  ctx.fillStyle = '#f7f2ea';
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle warm gradient overlay
+  var grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(224,180,130,0.06)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0)');
+  grad.addColorStop(1, 'rgba(224,180,130,0.04)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // -- Decorative outer border (thick warm brown) --
+  ctx.strokeStyle = '#8b7355';
+  ctx.lineWidth = 4;
+  roundRect(ctx, 12, 12, w - 24, h - 24, 8);
+  ctx.stroke();
+
+  // Inner thin border
+  ctx.strokeStyle = '#c4b5a0';
+  ctx.lineWidth = 1;
+  roundRect(ctx, 20, 20, w - 40, h - 40, 6);
+  ctx.stroke();
+
+  // -- Corner decorations (small L-shaped marks) --
+  ctx.strokeStyle = '#a08060';
+  ctx.lineWidth = 2;
+  var cm = 32, cl = 20;
+  // Top-left
+  ctx.beginPath(); ctx.moveTo(cm, cm + cl); ctx.lineTo(cm, cm); ctx.lineTo(cm + cl, cm); ctx.stroke();
+  // Top-right
+  ctx.beginPath(); ctx.moveTo(w - cm - cl, cm); ctx.lineTo(w - cm, cm); ctx.lineTo(w - cm, cm + cl); ctx.stroke();
+  // Bottom-left
+  ctx.beginPath(); ctx.moveTo(cm, h - cm - cl); ctx.lineTo(cm, h - cm); ctx.lineTo(cm + cl, h - cm); ctx.stroke();
+  // Bottom-right
+  ctx.beginPath(); ctx.moveTo(w - cm - cl, h - cm); ctx.lineTo(w - cm, h - cm); ctx.lineTo(w - cm, h - cm - cl); ctx.stroke();
+
+  // -- Small label above title --
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#b0a090';
+  ctx.font = '13px "Noto Sans TC", sans-serif';
+  ctx.fillText('-- \u7B2C\u4E00\u6B21 PR \u5DE5\u4F5C\u574A --', w / 2, 62);
+
+  // -- Main title: 均一挺開源 --
+  ctx.fillStyle = '#3a3028';
+  ctx.font = 'bold 52px "Noto Serif TC", Georgia, serif';
+  ctx.fillText('\u5747\u4E00\u633A\u958B\u6E90', w / 2, 118);
+
+  // -- Decorative divider --
+  ctx.strokeStyle = '#c4b5a0';
+  ctx.lineWidth = 1;
+  var dy = 155;
+  ctx.beginPath(); ctx.moveTo(w / 2 - 100, dy); ctx.lineTo(w / 2 - 20, dy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w / 2 + 20, dy); ctx.lineTo(w / 2 + 100, dy); ctx.stroke();
+  // Center diamond
+  ctx.fillStyle = '#c4b5a0';
+  ctx.beginPath();
+  ctx.moveTo(w / 2, dy - 5); ctx.lineTo(w / 2 + 5, dy); ctx.lineTo(w / 2, dy + 5); ctx.lineTo(w / 2 - 5, dy);
+  ctx.closePath(); ctx.fill();
+
+  // -- "Hereby certify" text --
+  ctx.fillStyle = '#7a6e60';
+  ctx.font = '15px "Noto Sans TC", sans-serif';
+  ctx.fillText('\u8332\u8B49\u660E', w / 2, 185);
+
+  // -- Player name (large, accent color) --
+  ctx.fillStyle = '#e07850';
+  var nameSize = name.length > 6 ? 32 : 40;
+  ctx.font = 'bold ' + nameSize + 'px "Noto Serif TC", Georgia, serif';
+  ctx.fillText(name, w / 2, 228);
+
+  // -- Achievement text --
+  ctx.fillStyle = '#5a5045';
+  ctx.font = '15px "Noto Serif TC", Georgia, serif';
+  ctx.fillText('\u5DF2\u6210\u529F\u96C6\u9F4A\u300C\u5747\u300D\u300C\u4E00\u300D\u300C\u633A\u300D\u300C\u958B\u300D\u300C\u6E90\u300D\u4E94\u5B57', w / 2, 272);
+  ctx.fillText('\u5747\u4E00\u633A\u958B\u6E90\uFF01', w / 2, 296);
+
+  // -- Decorative divider 2 --
+  var dy2 = 322;
+  ctx.strokeStyle = '#d5cbbe';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(w / 2 - 120, dy2); ctx.lineTo(w / 2 + 120, dy2); ctx.stroke();
+
+  // -- Stats --
+  var visitCount = Object.keys(G.visited).length;
+  var choiceCount = G.log.filter(function (e) { return e.type === 'choice'; }).length;
+  ctx.fillStyle = '#a09585';
+  ctx.font = '12px "Noto Sans TC", sans-serif';
+  var colCount = G.collectibles.length;
+  var statsLine = '\u63A2\u7D22 ' + visitCount + ' \u500B\u5834\u666F  |  ' + choiceCount + ' \u6B21\u9078\u64C7  |  ' + colCount + ' \u4EF6\u6536\u85CF\u54C1';
+  ctx.fillText(statsLine, w / 2, 346);
+
+  // -- Date --
+  var now = new Date();
+  var dateStr = now.getFullYear() + '.' + ('0' + (now.getMonth() + 1)).slice(-2) + '.' + ('0' + now.getDate()).slice(-2);
+  ctx.fillStyle = '#a09585';
+  ctx.font = '13px "Noto Sans TC", sans-serif';
+  ctx.fillText(dateStr, w / 2, 372);
+
+  // -- Footer --
+  ctx.fillStyle = '#c4b5a0';
+  ctx.font = '12px "Noto Sans TC", sans-serif';
+  ctx.fillText('\u5747\u4E00\u6559\u80B2\u5E73\u53F0 -- \u8FA6\u516C\u5BA4\u63A2\u96AA', w / 2, 400);
+
+  // -- Verification code (bottom-right) --
+  var code = generateVerifyCode(name);
+  ctx.fillStyle = '#d5cbbe';
+  ctx.font = '9px "Noto Sans TC", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(code.substring(0, 16), w - 28, h - 24);
+  ctx.textAlign = 'center';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function generateVerifyCode(name) {
+  var visitCount = Object.keys(G.visited).length;
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+  var payload = JSON.stringify({
+    n: name,
+    d: dateStr,
+    r: visitCount
+  });
+  try { return btoa(unescape(encodeURIComponent(payload))); }
+  catch (e) { return btoa(payload); }
+}
+
+function buildCompletionActions(container, canvas, name) {
+  clearEl(container);
+
+  // Save image
+  var saveBtn = el('button', 'completion-btn', '\u5132\u5B58\u5716\u7247');
+  saveBtn.addEventListener('click', function () {
+    try {
+      canvas.toBlob(function (blob) {
+        if (!blob) return;
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '\u5747\u4E00\u633A\u958B\u6E90-' + name + '.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }, 'image/png');
+    } catch (e) {}
+  });
+  container.appendChild(saveBtn);
+
+  // Copy code
+  var copyBtn = el('button', 'completion-btn', '\u8907\u88FD\u5206\u4EAB\u78BC');
+  copyBtn.addEventListener('click', function () {
+    var code = generateVerifyCode(name);
+    var shareUrl = location.origin + location.pathname + '?verify=' + encodeURIComponent(code);
+    copyText(shareUrl, copyBtn, '\u8907\u88FD\u5206\u4EAB\u78BC');
+  });
+  container.appendChild(copyBtn);
+
+  // Continue
+  var contBtn = el('button', 'completion-btn', '\u7E7C\u7E8C\u63A2\u7D22');
+  contBtn.addEventListener('click', function () {
+    $('completion-overlay').classList.remove('active');
+  });
+  container.appendChild(contBtn);
+
+  // Reset
+  var resetBtn = el('button', 'completion-btn danger', '\u91CD\u65B0\u958B\u59CB');
+  resetBtn.addEventListener('click', function () {
+    if (confirm('\u78BA\u5B9A\u8981\u91CD\u7F6E\u6240\u6709\u9032\u5EA6\u55CE\uFF1F')) {
+      clearSave();
+      location.reload();
+    }
+  });
+  container.appendChild(resetBtn);
+}
+
+/* ----------------------------------------------------------------
+   VERIFY MODE
+   ---------------------------------------------------------------- */
+function showVerifyPage(code) {
+  // Hide loading screen
+  $('loading-screen').classList.add('hidden');
+  $('app').style.display = 'none';
+  document.body.style.overflow = 'auto';
+
+  var page = el('div', 'verify-page');
+
+  try {
+    var json = decodeURIComponent(escape(atob(code)));
+    var data = JSON.parse(json);
+
+    page.appendChild(el('div', 'verify-title', '\u5747\u4E00\u633A\u958B\u6E90'));
+    page.appendChild(el('div', 'verify-name', data.n || ''));
+    page.appendChild(el('div', 'verify-info', '\u65E5\u671F\uFF1A' + (data.d || '')));
+    page.appendChild(el('div', 'verify-info', '\u63A2\u7D22\u5834\u666F\uFF1A' + (data.r || 0) + ' \u500B'));
+    if (data.t) {
+      page.appendChild(el('div', 'verify-info', '\u6027\u683C\uFF1A' + data.t));
+    }
+    page.appendChild(el('div', 'verify-info', '\u5747\u4E00\u8FA6\u516C\u5BA4\u63A2\u96AA'));
+  } catch (e) {
+    page.appendChild(el('div', 'verify-error', '\u7121\u6548\u7684\u5206\u4EAB\u78BC'));
+  }
+
+  document.body.appendChild(page);
+}
+
+/* ----------------------------------------------------------------
+   RENDER ROOM
+   ---------------------------------------------------------------- */
+function renderRoom() {
+  var container = $('room-content');
+  clearEl(container);
+
+  var room = G.roomMap[G.cur];
+  if (!room) return;
+
+  // Title
+  container.appendChild(el('div', 'room-title', room.title));
+
+  // Author (filename)
+  container.appendChild(el('div', 'room-author', 'by ' + room.filename));
+
+  // Hint banner (if a char has been found and there's a next one to find)
+  var hint = getHintForNextChar();
+  var anyCollected = false;
+  for (var ci = 0; ci < COLLECT_CHARS.length; ci++) {
+    if (G.collectedChars[COLLECT_CHARS[ci]]) { anyCollected = true; break; }
+  }
+  if (hint && anyCollected) {
+    var hintBanner = el('div', 'hint-banner');
+    hintBanner.textContent = hint;
+    container.appendChild(hintBanner);
+  }
+
+  // Description paragraphs
+  var descParts = room.description.split('\n\n');
+  for (var i = 0; i < descParts.length; i++) {
+    if (descParts[i].trim()) {
+      var p = el('div', 'room-description');
+      p.textContent = descParts[i].trim();
+      p.style.animationDelay = (i * 0.1) + 's';
+      container.appendChild(p);
+    }
+  }
+
+  // Interactions section
+  if (room.interactions.length > 0) {
+    var roomChoices = G.choices[G.cur] || [];
+    var hasAnyChoice = roomChoices.length > 0; // room already has a choice made
+
+    for (var idx = 0; idx < room.interactions.length; idx++) {
+      (function(interactionIdx) {
+        var inter = room.interactions[interactionIdx];
+        var wasChosen = roomChoices.indexOf(interactionIdx) >= 0;
+        var isLocked = !wasChosen && hasAnyChoice; // locked: not chosen but room already has a choice
+        var card = el('div', 'interaction-card');
+
+        if (wasChosen) {
+          card.classList.add('chosen');
+          card.classList.add('previous');
+        } else if (isLocked) {
+          card.classList.add('locked');
+        }
+
+        // Label row
+        var labelRow = el('div', 'interaction-label');
+
+        // Action text
+        var txt = el('span', 'interaction-text', inter.label);
+        labelRow.appendChild(txt);
+
+        // Badge for previously chosen
+        if (wasChosen) {
+          var badge = el('span', 'interaction-badge', '\u5DF2\u9078\u64C7');
+          labelRow.appendChild(badge);
+        }
+
+        card.appendChild(labelRow);
+
+        // Result text (shown for chosen cards)
+        var resultEl = el('div', 'interaction-result', inter.result);
+        card.appendChild(resultEl);
+
+        // Collectible badge for chosen cards that had a collectible
+        if (wasChosen && inter.collectible) {
+          var colBadge = el('div', 'interaction-collectible-badge', '\u6536\u85CF\uFF1A' + inter.collectible);
+          card.appendChild(colBadge);
+        }
+
+        // Click handler for unchosen AND unlocked cards only
+        if (!wasChosen && !isLocked) {
+          card.addEventListener('click', function () {
+            // Make the choice
+            if (!G.choices[G.cur]) G.choices[G.cur] = [];
+            G.choices[G.cur].push(interactionIdx);
+
+            if (!G.choiceResults[G.cur]) G.choiceResults[G.cur] = [];
+            G.choiceResults[G.cur].push({
+              action: inter.label,
+              result: inter.result
+            });
+
+            // Log the choice
+            G.log.push({
+              type: 'choice',
+              room: G.cur,
+              action: inter.label,
+              result: inter.result,
+              time: Date.now()
+            });
+
+            // Check for collectible
+            if (inter.collectible) {
+              var roomObj = G.roomMap[G.cur];
+              G.collectibles.push({
+                name: inter.collectible,
+                room: G.cur,
+                roomTitle: roomObj ? roomObj.title : G.cur
+              });
+              showCollectibleToast(inter.collectible);
+            }
+
+            save();
+
+            // Re-render to show the result
+            renderRoom();
+            updateProgress();
+          });
+        }
+
+        container.appendChild(card);
+      })(idx);
+    }
+  }
+
+  // Exits section
+  var exitConns = G.conns[G.cur];
+  var exitDirs = exitConns ? Object.keys(exitConns) : [];
+
+  if (exitDirs.length > 0) {
+    container.appendChild(el('div', 'section-heading', '-- 出口 --'));
+
+    var compass = el('div', 'exits-compass');
+    var dirGrid = { '往北': 'exit-north', '往南': 'exit-south', '往東': 'exit-east', '往西': 'exit-west' };
+
+    for (var di = 0; di < exitDirs.length; di++) {
+      (function(direction) {
+        var targetFn = exitConns[direction];
+        var targetRoom = G.roomMap[targetFn];
+        var targetName = targetRoom ? targetRoom.title : targetFn;
+
+        var btn = el('button', 'exit-btn');
+        btn.textContent = direction;
+        if (dirGrid[direction]) btn.classList.add(dirGrid[direction]);
+
+        // Show target name if visited
+        if (G.visited[targetFn]) {
+          var sub = el('div');
+          sub.style.fontSize = 'var(--fs-xs)';
+          sub.style.color = 'var(--text-muted)';
+          sub.style.marginTop = '2px';
+          sub.textContent = targetName;
+          btn.appendChild(sub);
+        }
+
+        btn.addEventListener('click', function () {
+          navigateTo(targetFn, direction);
+        });
+
+        compass.appendChild(btn);
+      })(exitDirs[di]);
+    }
+
+    container.appendChild(compass);
+  }
+
+  // Scroll to top
+  $('room-scroll').scrollTop = 0;
+}
+
+/* ----------------------------------------------------------------
+   NAVIGATION
+   ---------------------------------------------------------------- */
+function navigateTo(filename, direction) {
+  var overlay = $('transition-overlay');
+  var textEl = $('transition-text');
+
+  // Transition phrase
+  var phrase = DIR_PHRASES[direction] || '你繼續往前走。';
+  textEl.textContent = phrase;
+
+  // Fade out
+  overlay.classList.add('active');
+
+  setTimeout(function () {
+    G.prev = G.cur;
+    G.cur = filename;
+
+    // Mark visited
+    var firstVisit = !G.visited[filename];
+    G.visited[filename] = true;
+
+    // Log enter event
+    G.log.push({
+      type: 'enter',
+      room: filename,
+      direction: direction,
+      time: Date.now()
+    });
+
+    save();
+    renderRoom();
+    updateProgress();
+    renderMinimap();
+    pushHistory('game');
+
+    // Check for hidden character (collect on room entry)
+    setTimeout(function () { checkRoomChar(filename); }, 600);
+
+    // Fade in
+    setTimeout(function () {
+      overlay.classList.remove('active');
+    }, 400);
+
+  }, 200);
+}
+
+function enterRoom(filename) {
+  G.cur = filename;
+  G.visited[filename] = true;
+
+  G.log.push({
+    type: 'enter',
+    room: filename,
+    time: Date.now()
+  });
+
+  save();
+  renderRoom();
+  updateProgress();
+  renderMinimap();
+  pushHistory('game');
+
+  // Check if this room has a hidden character (collect on entry)
+  setTimeout(function () { checkRoomChar(filename); }, 600);
+}
+
+/* ----------------------------------------------------------------
+   JOURNAL: STORY TAB
+   ---------------------------------------------------------------- */
+function renderStoryTab() {
+  var container = $('journal-content');
+  clearEl(container);
+
+  // Check if enough data
+  var enterEvents = [];
+  var choiceMap = {}; // room -> first choice log entry
+  for (var i = 0; i < G.log.length; i++) {
+    if (G.log[i].type === 'enter') enterEvents.push(G.log[i]);
+    if (G.log[i].type === 'choice' && !choiceMap[G.log[i].room]) {
+      choiceMap[G.log[i].room] = G.log[i];
+    }
+  }
+
+  if (enterEvents.length < 2) {
+    container.appendChild(el('div', 'story-empty', '繼續探索來豐富你的故事...'));
+    return;
+  }
+
+  // Title
+  container.appendChild(el('div', 'story-title', '你的辦公室探險'));
+
+  // Build story from chronological room visits
+  var visitedRooms = [];
+  var seen = {};
+  for (var i = 0; i < enterEvents.length; i++) {
+    var roomFn = enterEvents[i].room;
+    if (seen[roomFn]) continue;
+    seen[roomFn] = true;
+    visitedRooms.push({
+      filename: roomFn,
+      direction: enterEvents[i].direction
+    });
+  }
+
+  for (var i = 0; i < visitedRooms.length; i++) {
+    var vr = visitedRooms[i];
+    var room = G.roomMap[vr.filename];
+    if (!room) continue;
+
+    // Scene setting: first sentence of description
+    var desc = room.description;
+    var firstSentence = desc.split(/[。！？\n]/)[0];
+    if (firstSentence) firstSentence += '。';
+
+    // Build paragraph
+    var paraText = firstSentence;
+
+    // Add chosen interaction result
+    var choice = choiceMap[vr.filename];
+    if (choice) {
+      paraText += choice.result;
+    }
+
+    container.appendChild(el('div', 'story-paragraph', paraText));
+
+    // Transition phrase between rooms
+    if (i < visitedRooms.length - 1) {
+      var nextDir = visitedRooms[i + 1].direction;
+      var phrase = DIR_PHRASES[nextDir] || '你繼續往前走。';
+      container.appendChild(el('div', 'story-transition', phrase));
+    }
+  }
+
+  // Copy button
+  var copyBtn = el('button', 'story-copy-btn', '複製故事');
+  copyBtn.addEventListener('click', function () {
+    var text = '你的辦公室探險\n\n';
+    for (var i = 0; i < visitedRooms.length; i++) {
+      var vr = visitedRooms[i];
+      var room = G.roomMap[vr.filename];
+      if (!room) continue;
+      var desc = room.description;
+      var firstSentence = desc.split(/[。！？\n]/)[0];
+      if (firstSentence) firstSentence += '。';
+      var paraText = firstSentence;
+      var choice = choiceMap[vr.filename];
+      if (choice) paraText += choice.result;
+      text += paraText + '\n\n';
+      if (i < visitedRooms.length - 1) {
+        var nextDir = visitedRooms[i + 1].direction;
+        var phrase = DIR_PHRASES[nextDir] || '你繼續往前走。';
+        text += phrase + '\n\n';
+      }
+    }
+    copyText(text, copyBtn, '\u8907\u88FD\u6545\u4E8B');
+  });
+  container.appendChild(copyBtn);
+
+  // Stats
+  var statsDiv = el('div', 'log-summary');
+  var visitCount = Object.keys(G.visited).length;
+  var choiceCount = G.log.filter(function (e) { return e.type === 'choice'; }).length;
+  var statsText = '探索了 ' + visitCount + ' 個場景，做了 ' + choiceCount + ' 個選擇，收集了 ' + G.collectibles.length + ' 件收藏品';
+  var strong = el('strong', null, statsText);
+  statsDiv.appendChild(strong);
+  container.appendChild(statsDiv);
+}
+
+/* ----------------------------------------------------------------
+   JOURNAL: LOG TAB
+   ---------------------------------------------------------------- */
+function renderLogTab() {
+  var container = $('journal-content');
+  clearEl(container);
+
+  // Summary
+  var visitCount = Object.keys(G.visited).length;
+  var choiceCount = G.log.filter(function (e) { return e.type === 'choice'; }).length;
+  var summary = el('div', 'log-summary');
+  var s1 = el('strong', null, visitCount + ' 個場景');
+  var s2 = el('strong', null, choiceCount + ' 個選擇');
+  var s3 = el('strong', null, G.collectibles.length + ' 件收藏品');
+  summary.appendChild(document.createTextNode('已探索 '));
+  summary.appendChild(s1);
+  summary.appendChild(document.createTextNode('，做了 '));
+  summary.appendChild(s2);
+  summary.appendChild(document.createTextNode('，收集了 '));
+  summary.appendChild(s3);
+  container.appendChild(summary);
+
+  if (G.log.length === 0) return;
+
+  // Timeline
+  var timeline = el('div', 'log-timeline');
+
+  for (var i = 0; i < G.log.length; i++) {
+    var entry = G.log[i];
+    var room = G.roomMap[entry.room];
+    var roomTitle = room ? room.title : entry.room;
+
+    var div = el('div', 'log-entry');
+
+    if (entry.type === 'enter') {
+      div.classList.add('entry-enter');
+
+      var time = el('div', 'log-entry-time');
+      var d = new Date(entry.time);
+      time.textContent = d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2);
+      div.appendChild(time);
+
+      var rn = el('div', 'log-entry-room', roomTitle);
+      div.appendChild(rn);
+
+      var act = el('div', 'log-entry-action');
+      if (entry.direction) {
+        act.textContent = entry.direction + ' 進入';
+      } else {
+        act.textContent = '開始探險';
+      }
+      div.appendChild(act);
+    } else if (entry.type === 'choice') {
+      div.classList.add('entry-choice');
+
+      var time2 = el('div', 'log-entry-time');
+      var d2 = new Date(entry.time);
+      time2.textContent = d2.getHours() + ':' + ('0' + d2.getMinutes()).slice(-2);
+      div.appendChild(time2);
+
+      var rn2 = el('div', 'log-entry-room', roomTitle);
+      div.appendChild(rn2);
+
+      var act2 = el('div', 'log-entry-action', entry.action);
+      div.appendChild(act2);
+
+      if (entry.result) {
+        var res = el('div', 'log-entry-result');
+        var resultText = entry.result;
+        if (resultText.length > 80) resultText = resultText.substring(0, 80) + '...';
+        res.textContent = resultText;
+        div.appendChild(res);
+      }
+    }
+
+    timeline.appendChild(div);
+  }
+
+  container.appendChild(timeline);
+}
+
+/* ----------------------------------------------------------------
+   JOURNAL: COLLECTIBLES TAB
+   ---------------------------------------------------------------- */
+function renderCollectiblesTab() {
+  var container = $('journal-content');
+  clearEl(container);
+
+  if (G.collectibles.length === 0) {
+    container.appendChild(el('div', 'collectibles-empty', '\u9084\u6C92\u6709\u6536\u85CF\u54C1\uFF0C\u8A66\u8A66\u770B\u8DDF\u5834\u666F\u4E92\u52D5\u5427'));
+    return;
+  }
+
+  var countDiv = el('div', 'collectibles-count', '\u5DF2\u6536\u96C6 ' + G.collectibles.length + ' \u4EF6\u6536\u85CF\u54C1');
+  container.appendChild(countDiv);
+
+  var grid = el('div', 'collectibles-grid');
+  for (var i = 0; i < G.collectibles.length; i++) {
+    var item = G.collectibles[i];
+    var card = el('div', 'collectible-card');
+    card.appendChild(el('div', 'collectible-card-name', item.name));
+    card.appendChild(el('div', 'collectible-card-room', item.roomTitle));
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+}
+
+/* ----------------------------------------------------------------
+   JOURNAL TAB SWITCHING
+   ---------------------------------------------------------------- */
+var currentTab = 'story';
+
+function switchTab(tab) {
+  currentTab = tab;
+  var tabs = document.querySelectorAll('.journal-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].getAttribute('data-tab') === tab);
+  }
+
+  if (tab === 'story') renderStoryTab();
+  else if (tab === 'log') renderLogTab();
+  else if (tab === 'collectibles') renderCollectiblesTab();
+}
+
+/* ----------------------------------------------------------------
+   EVENT BINDINGS
+   ---------------------------------------------------------------- */
+function bindEvents() {
+  // Start button
+  $('btn-start').addEventListener('click', function () {
+    stopDust();
+    $('welcome-screen').classList.add('hidden');
+    $('game-screen').classList.add('active');
+
+    // Enter first room
+    // Random starting room (different for each player)
+    var startIdx = Math.floor(Math.random() * G.rooms.length);
+    enterRoom(G.rooms[startIdx].filename);
+  });
+
+  // Welcome reset button
+  $('btn-welcome-reset').addEventListener('click', function () {
+    if (confirm('確定要重置所有進度嗎？')) { clearSave(); location.reload(); }
+  });
+
+  // Admin / cheat button
+  $('btn-admin').addEventListener('click', function () {
+    stopDust();
+    showAdminView();
+  });
+
+  // Continue button
+  $('btn-continue').addEventListener('click', function () {
+    stopDust();
+    $('welcome-screen').classList.add('hidden');
+    $('game-screen').classList.add('active');
+
+    renderRoom();
+    updateProgress();
+    renderMinimap();
+    pushHistory('game');
+  });
+
+  // Journal button
+  $('btn-journal').addEventListener('click', function () {
+    $('journal-overlay').classList.add('active');
+    switchTab(currentTab);
+    pushHistory('journal');
+  });
+
+  // Journal tabs
+  $('tab-story').addEventListener('click', function () { switchTab('story'); });
+  $('tab-log').addEventListener('click', function () { switchTab('log'); });
+  $('tab-collectibles').addEventListener('click', function () { switchTab('collectibles'); });
+
+  // Journal close
+  $('journal-close').addEventListener('click', function () {
+    $('journal-overlay').classList.remove('active');
+    pushHistory('game');
+  });
+
+  // Map buttons
+  function openMapCentered() {
+    $('map-overlay').classList.add('active');
+    mapSt.sc = 1;
+    // Center on current room
+    var cellSize = 80 * mapSt.sc;
+    var curPos = G.cur && G.positions[G.cur];
+    if (curPos) {
+      mapSt.px = -curPos.x * cellSize;
+      mapSt.py = -curPos.y * cellSize;
+    } else {
+      mapSt.px = 0; mapSt.py = 0;
+    }
+    renderFullMap();
+  }
+
+  $('btn-map').addEventListener('click', openMapCentered);
+  $('minimap-btn').addEventListener('click', openMapCentered);
+
+  $('map-close').addEventListener('click', function () {
+    $('map-overlay').classList.remove('active');
+  });
+
+  // Home button (return to welcome screen)
+  $('btn-home').addEventListener('click', function () {
+    save();
+    $('game-screen').classList.remove('active');
+    $('welcome-screen').classList.remove('hidden');
+    // Update continue button with current progress
+    var visitCount = Object.keys(G.visited).length;
+    var continueBtn = $('btn-continue');
+    continueBtn.textContent = '\u7E7C\u7E8C\u63A2\u96AA (\u5DF2\u63A2\u7D22 ' + visitCount + ' \u500B\u5834\u666F)';
+    continueBtn.classList.remove('hidden');
+    $('btn-welcome-reset').classList.remove('hidden');
+    pushHistory('home');
+    initDust();
+  });
+}
+
+/* ----------------------------------------------------------------
+   INIT -- Load rooms and start
+   ---------------------------------------------------------------- */
+function init() {
+  // Browser back/forward support
+  window.addEventListener('popstate', handlePopState);
+
+  // Check for verify mode
+  var urlParams = new URLSearchParams(window.location.search);
+  var verifyCode = urlParams.get('verify');
+  if (verifyCode) {
+    showVerifyPage(verifyCode);
+    return;
+  }
+
+  // Fetch index
+  fetch('contributors/index.md?t=' + Date.now())
+    .then(function (r) { return r.text(); })
+    .then(function (text) {
+      var files = text.split('\n').map(function (l) { return l.trim(); }).filter(function (l) {
+        return l && l.endsWith('.md') && l !== '_template.md' && l !== 'index.md';
+      });
+
+      if (!files.length) {
+        $('loading-screen').classList.add('hidden');
+        $('welcome-screen').classList.remove('hidden');
+        return;
+      }
+
+      // Fetch all room files
+      var promises = files.map(function (f) {
+        return fetch('contributors/' + encodeURIComponent(f) + '?t=' + Date.now())
+          .then(function (r) { return r.ok ? r.text() : ''; })
+          .then(function (md) { return parseRoom(md, f); })
+          .catch(function () { return null; });
+      });
+
+      return Promise.all(promises).then(function (rooms) {
+        // Filter nulls and sort by filename
+        rooms = rooms.filter(function (r) { return r !== null; });
+        rooms.sort(function (a, b) { return a.filename.localeCompare(b.filename); });
+
+        G.rooms = rooms;
+        for (var i = 0; i < rooms.length; i++) {
+          G.roomMap[rooms[i].filename] = rooms[i];
+          G.roomIdx[rooms[i].filename] = i;
+        }
+
+        // Build connections
+        buildConnections();
+
+        // Assign hidden characters for collection quest
+        assignHiddenChars();
+
+        // Try to restore save
+        var saved = loadSave();
+        if (saved && saved.cur && G.roomMap[saved.cur]) {
+          G.cur = saved.cur;
+
+          // Clean stale data: filter out rooms that no longer exist
+          var sv = saved.visited || {};
+          var sc = saved.choices || {};
+          var sr = saved.choiceResults || {};
+          var cleanVisited = {}, cleanChoices = {}, cleanResults = {};
+          for (var fn in sv) { if (G.roomMap[fn]) cleanVisited[fn] = true; }
+          for (var fn in sc) { if (G.roomMap[fn]) cleanChoices[fn] = sc[fn]; }
+          for (var fn in sr) { if (G.roomMap[fn]) cleanResults[fn] = sr[fn]; }
+          G.visited = cleanVisited;
+          G.choices = cleanChoices;
+          G.choiceResults = cleanResults;
+
+          // Filter log entries for existing rooms
+          var savedLog = saved.log || [];
+          G.log = [];
+          for (var li = 0; li < savedLog.length; li++) {
+            if (!savedLog[li].room || G.roomMap[savedLog[li].room]) G.log.push(savedLog[li]);
+          }
+
+          if (saved.collectedChars) G.collectedChars = saved.collectedChars;
+          if (saved.collectibles) G.collectibles = saved.collectibles;
+          if (saved.playerName) G.playerName = saved.playerName;
+        }
+
+        // Bind events
+        bindEvents();
+        initMapControls();
+
+        // Hide loading, show welcome
+        $('loading-screen').classList.add('hidden');
+        $('welcome-screen').classList.remove('hidden');
+
+        // Update subtitle
+        $('welcome-subtitle').textContent = '由 ' + rooms.length + ' 位同事共同建造';
+
+        // Show continue button if saved
+        if (saved && saved.cur && G.roomMap[saved.cur]) {
+          var visitCount = Object.keys(G.visited).length;
+          var continueBtn = $('btn-continue');
+          continueBtn.textContent = '繼續探險 (已探索 ' + visitCount + ' 個場景)';
+          continueBtn.classList.remove('hidden');
+          $('btn-welcome-reset').classList.remove('hidden');
+        }
+
+        // Check for admin mode
+        if (window.location.search.indexOf('admin') !== -1) {
+          $('welcome-screen').classList.add('hidden');
+          showAdminView();
+          return;
+        }
+
+        // Start dust particles
+        initDust();
+
+        // Enable browser history after init
+        historyReady = true;
+        history.replaceState({ view: 'home' }, '', '#home');
+      });
+    })
+    .catch(function (err) {
+      console.error('Failed to load rooms:', err);
+      $('loading-screen').classList.add('hidden');
+      $('welcome-screen').classList.remove('hidden');
+      $('welcome-subtitle').textContent = '載入失敗，請重新整理頁面';
+    });
+}
+
+/* ----------------------------------------------------------------
+   ADMIN VIEW — full grid with all rooms and empty slots
+   URL: ?admin
+   ---------------------------------------------------------------- */
+function showAdminView() {
+  // Hide ALL game UI, enable scrolling
+  $('app').style.display = 'none';
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+
+  // Build admin container
+  var admin = el('div', 'admin-view');
+
+  // Back button
+  var backBtn = el('button', 'admin-back-btn', '返回首頁');
+  backBtn.addEventListener('click', function () {
+    location.href = location.pathname;
+  });
+  admin.appendChild(backBtn);
+
+  var title = el('h1', 'admin-title', '作弊模式 -- 辦公室平面圖');
+  admin.appendChild(title);
+
+  var stats = el('div', 'admin-stats');
+  var totalSlots = G.gridCols * G.gridRows;
+  stats.textContent = '房間：' + G.rooms.length + ' / 網格：' + G.gridCols + ' x ' + G.gridRows + ' (' + totalSlots + ' 格) / 空位：' + (totalSlots - G.rooms.length);
+  admin.appendChild(stats);
+
+  // Build grid
+  var gridEl = el('div', 'admin-grid');
+  gridEl.style.gridTemplateColumns = 'repeat(' + G.gridCols + ', 1fr)';
+
+  // Create a lookup: "x,y" -> room
+  var posMap = {};
+  for (var i = 0; i < G.rooms.length; i++) {
+    var fn = G.rooms[i].filename;
+    var p = G.positions[fn];
+    if (p) posMap[p.x + ',' + p.y] = G.rooms[i];
+  }
+
+  for (var r = 0; r < G.gridRows; r++) {
+    for (var c = 0; c < G.gridCols; c++) {
+      var key = c + ',' + r;
+      var room = posMap[key];
+      var isCurrent = room && G.cur === room.filename;
+      var cls = room ? ('admin-cell occupied' + (isCurrent ? ' current' : '')) : 'admin-cell empty';
+      var cell = el('div', cls);
+
+      if (room) {
+        cell.appendChild(el('div', 'admin-cell-title', room.title));
+        cell.appendChild(el('div', 'admin-cell-file', room.filename));
+
+        // Show connections
+        var cc = G.conns[room.filename];
+        if (cc) {
+          var dirs = [];
+          for (var d in cc) dirs.push(d.replace('往', ''));
+          if (dirs.length) {
+            cell.appendChild(el('div', 'admin-cell-dirs', dirs.join(' ')));
+          }
+        }
+
+        // Show interaction count
+        cell.appendChild(el('div', 'admin-cell-info', room.interactions.length + ' 個互動'));
+      } else {
+        cell.appendChild(el('div', 'admin-cell-empty-label', '(' + c + ',' + r + ')'));
+        cell.appendChild(el('div', 'admin-cell-empty-label', '空位'));
+      }
+
+      gridEl.appendChild(cell);
+    }
+  }
+
+  admin.appendChild(gridEl);
+
+  document.body.appendChild(admin);
+}
+
+// Start
+init();
+
+})();
+</script>
+</body>
+</html>
